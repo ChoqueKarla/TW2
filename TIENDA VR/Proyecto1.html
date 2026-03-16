@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS TECH — Tienda 3D de Componentes</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=IBM+Plex+Mono:wght@300;400;500&family=Outfit:wght@300;400;500;600&display=swap');
+:root{--bg:#050709;--bg1:#080c10;--bg2:#0c1018;--bg3:#111722;--panel:#0a0e16;--border:rgba(0,200,255,.08);--border2:rgba(0,200,255,.18);--accent:#00c8ff;--accent2:#0088bb;--accent-dim:rgba(0,200,255,.12);--green:#00ff88;--green-dim:rgba(0,255,136,.12);--amber:#ffaa00;--amber-dim:rgba(255,170,0,.12);--red:#ff4455;--red-dim:rgba(255,68,85,.12);--text:#e2eaf5;--text2:#8899aa;--text3:#445566;--radius-sm:4px;--radius-md:8px;--radius-lg:12px;--panel-w:400px;--cart-w:420px;--font-display:'Orbitron',sans-serif;--font-mono:'IBM Plex Mono',monospace;--font-body:'Outfit',sans-serif;--transition:.3s cubic-bezier(.25,.46,.45,.94)}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--font-body)}
+button{font-family:inherit;cursor:pointer;border:none;outline:none}
+canvas{display:block}
+/* ── INTRO ── */
+#intro-screen{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:var(--bg);transition:opacity .8s ease,visibility .8s ease}
+#intro-screen.gone{opacity:0;visibility:hidden;pointer-events:none}
+.intro-bg{position:absolute;inset:0;background:radial-gradient(ellipse 60% 40% at 50% 100%,rgba(0,200,255,.06) 0%,transparent 70%),radial-gradient(ellipse 40% 30% at 20% 20%,rgba(0,136,187,.04) 0%,transparent 60%)}
+.intro-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(0,200,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,200,255,.025) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 30%,transparent 100%)}
+.intro-content{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:20px;text-align:center}
+.intro-badge{font-family:var(--font-mono);font-size:10px;font-weight:500;letter-spacing:4px;color:var(--accent);border:1px solid var(--border2);padding:6px 16px;border-radius:100px;background:var(--accent-dim)}
+.intro-logo{font-family:var(--font-display);font-size:clamp(52px,8vw,96px);font-weight:900;letter-spacing:6px;line-height:1;color:var(--text)}
+.intro-logo span{color:var(--accent)}
+.intro-tagline{font-size:16px;font-weight:300;color:var(--text2);letter-spacing:1px}
+.intro-specs{display:flex;align-items:center;gap:16px;font-family:var(--font-mono);font-size:11px;color:var(--text3)}
+.spec-item span{display:block;color:var(--accent);font-size:9px;letter-spacing:2px;margin-bottom:2px}
+.spec-sep{color:var(--border2)}
+#enter-btn{display:flex;align-items:center;gap:10px;background:transparent;border:1px solid var(--accent);color:var(--accent);padding:14px 40px;font-family:var(--font-display);font-size:12px;font-weight:700;letter-spacing:3px;border-radius:var(--radius-sm);transition:all var(--transition);margin-top:8px;position:relative;overflow:hidden}
+#enter-btn::before{content:'';position:absolute;inset:0;background:var(--accent);transform:scaleX(0);transform-origin:left;transition:transform .4s ease;z-index:-1}
+#enter-btn:hover{color:var(--bg)}
+#enter-btn:hover::before{transform:scaleX(1)}
+.intro-note{font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px}
+/* ── LOADING ── */
+#loading-screen{position:fixed;inset:0;z-index:150;background:var(--bg);display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:opacity .4s ease,visibility .4s ease}
+#loading-screen.show{opacity:1;visibility:visible}
+#loading-screen.gone{opacity:0;visibility:hidden}
+.loader-inner{text-align:center;width:300px}
+.loader-logo{font-family:var(--font-display);font-size:28px;font-weight:900;letter-spacing:4px;color:var(--text);margin-bottom:32px}
+.loader-logo span{color:var(--accent)}
+.loader-bar-track{width:100%;height:2px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-bottom:12px}
+.loader-bar{height:100%;width:0%;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:2px;transition:width .3s ease;box-shadow:0 0 12px var(--accent)}
+.loader-text{font-family:var(--font-mono);font-size:11px;color:var(--text2);letter-spacing:1px}
+/* ── CANVAS ── */
+#main-canvas{position:fixed;inset:0;z-index:0;width:100%!important;height:100%!important}
+/* ── HUD ── */
+#hud-header{position:fixed;top:0;left:0;right:0;z-index:50;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:linear-gradient(to bottom,rgba(5,7,9,.95) 0%,transparent 100%);border-bottom:1px solid var(--border)}
+.hud-left{display:flex;align-items:center;gap:20px}
+.hud-logo{font-family:var(--font-display);font-size:16px;font-weight:900;letter-spacing:3px;color:var(--text)}
+.hud-logo span{color:var(--accent)}
+.hud-status{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.hud-nav{display:flex;gap:4px}
+.nav-pill{display:flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--border);color:var(--text3);padding:6px 14px;font-family:var(--font-body);font-size:12px;font-weight:500;border-radius:100px;transition:all var(--transition)}
+.nav-pill:hover{border-color:var(--border2);color:var(--text2)}
+.nav-pill.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.hud-right{display:flex;align-items:center;gap:12px}
+.cart-trigger{position:relative;background:var(--bg2);border:1px solid var(--border);color:var(--text2);width:40px;height:40px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;transition:all var(--transition)}
+.cart-trigger:hover{border-color:var(--border2);color:var(--accent)}
+.cart-badge{position:absolute;top:-6px;right:-6px;background:var(--accent);color:var(--bg);font-family:var(--font-mono);font-size:9px;font-weight:700;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:transform .2s}
+.cart-badge.pop{transform:scale(1.4)}
+/* ── CROSSHAIR ── */
+#crosshair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:30;pointer-events:none;opacity:0;transition:opacity .3s}
+#crosshair.show{opacity:1}
+.ch-ring{width:20px;height:20px;border:1px solid rgba(0,200,255,.6);border-radius:50%}
+.ch-dot{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:3px;height:3px;background:var(--accent);border-radius:50%}
+#interact-tip{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:30;pointer-events:none;background:rgba(5,7,9,.9);border:1px solid var(--border2);padding:8px 20px;font-family:var(--font-mono);font-size:11px;color:var(--accent);letter-spacing:1px;border-radius:100px;opacity:0;transition:opacity .25s;display:flex;align-items:center;gap:8px;white-space:nowrap}
+#interact-tip.show{opacity:1}
+kbd{background:var(--bg3);border:1px solid var(--border2);color:var(--text);padding:2px 7px;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:10px}
+#controls-legend{position:fixed;bottom:24px;left:24px;z-index:30;display:flex;flex-direction:column;gap:6px;opacity:.7}
+.legend-row{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:10px;color:var(--text3)}
+/* ── PRODUCT PANEL ── */
+#product-panel{position:fixed;top:0;right:calc(-1 * var(--panel-w));width:var(--panel-w);bottom:0;z-index:80;background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;transition:right var(--transition);overflow:hidden}
+#product-panel.open{right:0}
+.panel-x{position:absolute;top:16px;right:16px;z-index:2;background:var(--bg2);border:1px solid var(--border);color:var(--text2);width:32px;height:32px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;transition:all var(--transition)}
+.panel-x:hover{border-color:var(--red);color:var(--red)}
+#product-viewer{position:relative;width:100%;height:280px;background:var(--bg1);border-bottom:1px solid var(--border);flex-shrink:0}
+#product-canvas{width:100%;height:100%}
+.viewer-hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:1px;pointer-events:none}
+.viewer-controls{position:absolute;top:12px;left:12px;display:flex;gap:6px}
+.viewer-btn{background:rgba(5,7,9,.8);border:1px solid var(--border);color:var(--text3);width:30px;height:30px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;transition:all var(--transition)}
+.viewer-btn:hover,.viewer-btn.active-btn{border-color:var(--accent);color:var(--accent);background:var(--accent-dim)}
+#product-details{flex:1;overflow-y:auto;padding:24px;scrollbar-width:thin;scrollbar-color:var(--bg3) transparent}
+#product-details::-webkit-scrollbar{width:4px}
+#product-details::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:4px}
+.pd-tag{display:inline-block;font-family:var(--font-mono);font-size:9px;font-weight:500;letter-spacing:3px;text-transform:uppercase;color:var(--accent);background:var(--accent-dim);border:1px solid var(--border2);padding:3px 10px;border-radius:100px;margin-bottom:10px}
+#pd-name{font-family:var(--font-display);font-size:18px;font-weight:700;line-height:1.3;color:var(--text);margin-bottom:14px}
+.pd-price-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.pd-price{font-family:var(--font-display);font-size:24px;font-weight:700;color:var(--accent)}
+.pd-stock{display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px}
+.stock-dot{width:7px;height:7px;border-radius:50%}
+.stock-ok .stock-dot{background:var(--green);box-shadow:0 0 6px var(--green)}
+.stock-low .stock-dot{background:var(--amber);box-shadow:0 0 6px var(--amber)}
+.stock-out .stock-dot{background:var(--red);box-shadow:0 0 6px var(--red)}
+.stock-ok .stock-label{color:var(--green)}
+.stock-low .stock-label{color:var(--amber)}
+.stock-out .stock-label{color:var(--red)}
+.pd-desc{font-size:13px;line-height:1.7;color:var(--text2);border-left:2px solid var(--border2);padding-left:12px;margin-bottom:20px}
+.pd-specs{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;margin-bottom:20px;font-family:var(--font-mono);font-size:11px}
+.spec-key{color:var(--text3)}
+.spec-val{color:var(--text);font-weight:500}
+.pd-label{font-family:var(--font-mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
+.pd-colors{margin-bottom:20px}
+.pd-color-swatches{display:flex;gap:8px;flex-wrap:wrap}
+.swatch{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .2s;position:relative}
+.swatch::after{content:'';position:absolute;inset:-4px;border-radius:50%;border:1px solid transparent;transition:border-color .2s}
+.swatch.selected::after{border-color:var(--accent)}
+.swatch:hover{transform:scale(1.1)}
+.pd-qty-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.qty-control{display:flex;align-items:center;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+.qty-btn{background:var(--bg2);color:var(--text2);width:32px;height:32px;font-size:18px;font-weight:300;border:none;transition:all var(--transition)}
+.qty-btn:hover{background:var(--bg3);color:var(--accent)}
+#qty-display{width:40px;text-align:center;font-family:var(--font-mono);font-size:14px;font-weight:500;color:var(--text);padding:0 4px;border-left:1px solid var(--border);border-right:1px solid var(--border)}
+.pd-actions{display:flex;gap:8px}
+.btn-add{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);color:var(--bg);padding:13px 20px;font-family:var(--font-body);font-size:13px;font-weight:600;border-radius:var(--radius-sm);transition:all var(--transition)}
+.btn-add:hover{background:#00aadd}
+.btn-add:disabled{background:var(--bg3);color:var(--text3);cursor:not-allowed}
+.btn-wish{background:var(--bg2);border:1px solid var(--border);color:var(--text3);width:46px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;transition:all var(--transition)}
+.btn-wish:hover{border-color:var(--red);color:var(--red);background:var(--red-dim)}
+.btn-wish.wished{background:var(--red-dim);border-color:var(--red);color:var(--red)}
+/* ── CART ── */
+#cart-overlay{position:fixed;inset:0;z-index:90;background:rgba(5,7,9,.6);backdrop-filter:blur(4px);opacity:0;visibility:hidden;transition:all var(--transition)}
+#cart-overlay.show{opacity:1;visibility:visible}
+#cart-panel{position:fixed;top:0;right:calc(-1 * var(--cart-w));width:var(--cart-w);bottom:0;z-index:100;background:var(--bg1);border-left:1px solid var(--border);display:flex;flex-direction:column;transition:right var(--transition)}
+#cart-panel.open{right:0}
+.cart-head{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.cart-head h2{font-family:var(--font-display);font-size:14px;font-weight:700;letter-spacing:2px;color:var(--text)}
+.cart-head h2 span{color:var(--text3);font-size:12px;font-family:var(--font-mono)}
+#cart-items-list{flex:1;overflow-y:auto;padding:16px;scrollbar-width:thin;scrollbar-color:var(--bg3) transparent}
+.cart-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;gap:12px;color:var(--text3);font-family:var(--font-mono);font-size:12px}
+.cart-empty svg{opacity:.3}
+.cart-card{display:flex;gap:12px;padding:14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-md);margin-bottom:8px;animation:slideInCart .3s ease}
+@keyframes slideInCart{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+.cart-card-icon{width:52px;height:52px;border-radius:var(--radius-sm);background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;border:1px solid var(--border)}
+.cart-card-info{flex:1;min-width:0}
+.cart-card-name{font-size:13px;font-weight:500;color:var(--text);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cart-card-meta{font-family:var(--font-mono);font-size:11px;color:var(--text3);margin-bottom:8px}
+.cart-card-bottom{display:flex;align-items:center;justify-content:space-between}
+.cart-card-price{font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--accent)}
+.cart-card-remove{background:transparent;color:var(--text3);width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-sm);font-size:14px;transition:all var(--transition)}
+.cart-card-remove:hover{background:var(--red-dim);color:var(--red)}
+.cart-foot{padding:20px 24px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:12px;flex-shrink:0}
+.cart-subtotal{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:12px;color:var(--text2)}
+.cart-total-row{display:flex;justify-content:space-between;align-items:baseline}
+.cart-total-row span:first-child{font-family:var(--font-mono);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--text3)}
+.cart-total-row span:last-child{font-family:var(--font-display);font-size:22px;font-weight:700;color:var(--accent)}
+.btn-checkout{background:var(--accent);color:var(--bg);padding:14px;font-family:var(--font-display);font-size:11px;font-weight:700;letter-spacing:2px;border-radius:var(--radius-sm);transition:all var(--transition)}
+.btn-checkout:hover{background:#00aadd}
+.btn-continue{background:transparent;border:1px solid var(--border);color:var(--text3);padding:10px;font-size:12px;border-radius:var(--radius-sm);transition:all var(--transition)}
+.btn-continue:hover{border-color:var(--border2);color:var(--text2)}
+/* ── TOAST ── */
+.toast{position:fixed;top:70px;right:24px;z-index:120;background:var(--bg2);border:1px solid var(--green);color:var(--green);padding:10px 20px;font-family:var(--font-mono);font-size:12px;border-radius:var(--radius-sm);transform:translateX(calc(100% + 32px));transition:transform .3s cubic-bezier(.25,.46,.45,.94);box-shadow:0 0 20px rgba(0,255,136,.1)}
+.toast.show{transform:translateX(0)}
+</style>
+</head>
+<body>
+
+<!-- ═══ INTRO ═══ -->
+<div id="intro-screen">
+  <div class="intro-bg"></div>
+  <div class="intro-content">
+    <div class="intro-badge">EXPERIENCIA INMERSIVA 3D</div>
+    <h1 class="intro-logo">NEXUS<span>TECH</span></h1>
+    <p class="intro-tagline">Componentes de alta gama. Explora en 3D.</p>
+    <div class="intro-specs">
+      <div class="spec-item"><span>GPU</span>RTX Series</div>
+      <div class="spec-sep">·</div>
+      <div class="spec-item"><span>CPU</span>AM5 / LGA1851</div>
+      <div class="spec-sep">·</div>
+      <div class="spec-item"><span>RAM</span>DDR5</div>
+    </div>
+    <button id="enter-btn" onclick="enterStore()">
+      <span>ENTRAR A LA TIENDA</span>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <p class="intro-note">W A S D para moverse · Click para seleccionar</p>
+  </div>
+  <div class="intro-grid"></div>
+</div>
+
+<!-- ═══ LOADING ═══ -->
+<div id="loading-screen">
+  <div class="loader-inner">
+    <div class="loader-logo">NEXUS<span>TECH</span></div>
+    <div class="loader-bar-track"><div class="loader-bar" id="loader-bar"></div></div>
+    <div class="loader-text" id="loader-text">Inicializando escena 3D...</div>
+  </div>
+</div>
+
+<canvas id="main-canvas"></canvas>
+
+<!-- ═══ HUD ═══ -->
+<header id="hud-header">
+  <div class="hud-left">
+    <div class="hud-logo">NEXUS<span>TECH</span></div>
+    <div class="hud-status"><div class="status-dot"></div><span>TIENDA ABIERTA</span></div>
+  </div>
+  <nav class="hud-nav">
+    <button class="nav-pill active" onclick="setMode('walk',this)">
+      <svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="6" cy="6" r="2" fill="currentColor"/></svg>
+      Caminar
+    </button>
+    <button class="nav-pill" onclick="setMode('orbit',this)">
+      <svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 1a5 5 0 1 0 0 10A5 5 0 0 0 6 1z" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M1 6h10M6 1c-2 2-2 6 0 10" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>
+      Órbita
+    </button>
+  </nav>
+  <div class="hud-right">
+    <button class="cart-trigger" onclick="toggleCart()">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M1 1h2l2.4 7.4a2 2 0 0 0 1.9 1.4h6.8a2 2 0 0 0 1.9-1.4L18 4H4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="15.5" r="1" fill="currentColor"/><circle cx="14" cy="15.5" r="1" fill="currentColor"/></svg>
+      <span class="cart-badge" id="cart-badge">0</span>
+    </button>
+  </div>
+</header>
+
+<div id="crosshair"><div class="ch-ring"></div><div class="ch-dot"></div></div>
+
+<div id="interact-tip"><kbd>F</kbd> Ver producto</div>
+
+<div id="controls-legend">
+  <div class="legend-row"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span>Moverse</span></div>
+  <div class="legend-row"><kbd>Mouse</kbd><span>Mirar</span></div>
+  <div class="legend-row"><kbd>F</kbd><span>Inspeccionar</span></div>
+  <div class="legend-row"><kbd>ESC</kbd><span>Salir / Cerrar</span></div>
+</div>
+
+<!-- ═══ PRODUCT PANEL ═══ -->
+<aside id="product-panel">
+  <button class="panel-x" onclick="closeProductPanel()"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+  <div id="product-viewer">
+    <canvas id="product-canvas"></canvas>
+    <div class="viewer-hint">← Arrastra para rotar →</div>
+    <div class="viewer-controls">
+      <button class="viewer-btn" id="btn-explode" onclick="toggleExplode()" title="Vista explosionada"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M7 1v2M7 11v2M1 7h2M11 7h2M3 3l1.5 1.5M9.5 9.5L11 11M11 3l-1.5 1.5M4.5 9.5L3 11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
+      <button class="viewer-btn" id="btn-wireframe" onclick="toggleWireframe()" title="Wireframe"><svg width="14" height="14" viewBox="0 0 14 14"><rect x="1" y="1" width="12" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M1 7h12M7 1v12" stroke="currentColor" stroke-width="1" stroke-dasharray="2 2"/></svg></button>
+      <button class="viewer-btn active-btn" id="btn-autorot" onclick="toggleAutoRot()" title="Auto-rotar"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M2 7a5 5 0 0 1 9-3M12 7a5 5 0 0 1-9 3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M11 1v3h-3M3 13v-3h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    </div>
+  </div>
+  <div id="product-details">
+    <div class="pd-tag" id="pd-category">GPU</div>
+    <h2 id="pd-name">Nombre</h2>
+    <div class="pd-price-row">
+      <div class="pd-price" id="pd-price">Bs. 0</div>
+      <div class="pd-stock" id="pd-stock"><span class="stock-dot"></span><span class="stock-label">En stock</span></div>
+    </div>
+    <p class="pd-desc" id="pd-desc"></p>
+    <div class="pd-specs" id="pd-specs"></div>
+    <div class="pd-colors">
+      <div class="pd-label">Color / Variante</div>
+      <div class="pd-color-swatches" id="pd-swatches"></div>
+    </div>
+    <div class="pd-qty-row">
+      <div class="pd-label">Cantidad</div>
+      <div class="qty-control">
+        <button class="qty-btn" onclick="changeQty(-1)">−</button>
+        <span id="qty-display">1</span>
+        <button class="qty-btn" onclick="changeQty(1)">+</button>
+      </div>
+    </div>
+    <div class="pd-actions">
+      <button class="btn-add" id="btn-add" onclick="addToCart()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        Agregar al carrito
+      </button>
+      <button class="btn-wish" onclick="toggleWish()"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 13.5C8 13.5 1.5 9 1.5 5a3.5 3.5 0 0 1 6.5-1.8A3.5 3.5 0 0 1 14.5 5c0 4-6.5 8.5-6.5 8.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg></button>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══ CART ═══ -->
+<div id="cart-overlay" onclick="toggleCart()"></div>
+<aside id="cart-panel">
+  <div class="cart-head">
+    <h2>Carrito <span id="cart-item-count">(0 items)</span></h2>
+    <button class="panel-x" style="position:static" onclick="toggleCart()"><svg width="14" height="14" viewBox="0 0 14 14"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+  </div>
+  <div id="cart-items-list"></div>
+  <div class="cart-foot">
+    <div class="cart-subtotal"><span>Subtotal</span><span id="cart-subtotal-val">Bs. 0</span></div>
+    <div class="cart-total-row"><span>Total</span><span id="cart-total-val">Bs. 0</span></div>
+    <button class="btn-checkout">Proceder al pago →</button>
+    <button class="btn-continue" onclick="toggleCart()">Seguir comprando</button>
+  </div>
+</aside>
+
+<div id="toast" class="toast"></div>
+
+<!-- ═══ THREE.JS CDN ═══ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<!-- ═══════════════════════════════════════════
+     STORE.JS — lógica completa inline
+════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+// ═══ 1. PRODUCTOS ═══
+const PRODUCTS = [
+  { id:1, name:'RTX 4090 Founders Edition', category:'GPU', emoji:'🎮', price:28500, stock:4,
+    desc:'GPU flagship de NVIDIA. 24GB GDDR6X, 16384 CUDA Cores, TDP 450W. La GPU más potente para gaming y producción.',
+    colors:['#2c2c2c','#1a1a2e','#16213e'],
+    specs:[['VRAM','24 GB GDDR6X'],['CUDA Cores','16 384'],['Base Clock','2235 MHz'],['TDP','450 W'],['Interface','PCIe 4.0 x16']],
+    shapeType:'gpu', shelfPos:{x:-6,y:1.35,z:-7.5} },
+  { id:2, name:'Ryzen 9 7950X', category:'CPU', emoji:'🔲', price:9800, stock:7,
+    desc:'Procesador AMD Zen 4, 16 núcleos / 32 hilos. Socket AM5, hasta 5.7 GHz boost. Ideal para workstation.',
+    colors:['#1a1a1a','#0d0d0d','#333333'],
+    specs:[['Núcleos / Hilos','16 / 32'],['Base / Boost','4.5 / 5.7 GHz'],['Socket','AM5'],['TDP','170 W'],['Caché L3','64 MB']],
+    shapeType:'cpu', shelfPos:{x:-2,y:1.35,z:-7.5} },
+  { id:3, name:'Corsair DDR5-6400 32GB Kit', category:'RAM', emoji:'💾', price:2650, stock:12,
+    desc:'Kit 2×16 GB DDR5-6400 con XMP 3.0. Disipador de aluminio, latencia CL32. Compatible Intel y AMD.',
+    colors:['#ffffff','#000000','#cc0000'],
+    specs:[['Capacidad','2 × 16 GB = 32 GB'],['Velocidad','DDR5-6400'],['Latencia','CL32'],['Voltaje','1.4 V'],['Perfil','XMP 3.0']],
+    shapeType:'ram', shelfPos:{x:2,y:1.35,z:-7.5} },
+  { id:4, name:'Samsung 990 Pro 2TB NVMe', category:'SSD', emoji:'⚡', price:1890, stock:9,
+    desc:'SSD NVMe M.2 PCIe 4.0 x4. Lectura 7450 MB/s, escritura 6900 MB/s. TLC NAND 3D.',
+    colors:['#111111','#1a1a4a','#222266'],
+    specs:[['Capacidad','2 TB'],['Interface','PCIe 4.0 NVMe'],['Lectura seq.','7 450 MB/s'],['Escritura seq.','6 900 MB/s'],['Formato','M.2 2280']],
+    shapeType:'ssd', shelfPos:{x:6,y:1.35,z:-7.5} },
+  { id:5, name:'ASUS ROG Strix Z790-E', category:'Motherboard', emoji:'🔧', price:7200, stock:3,
+    desc:'Placa base ATX LGA1700. 18+1 fases de potencia, DDR5, PCIe 5.0, Wi-Fi 6E, USB4. Diseño ROG.',
+    colors:['#0a0a12','#1a1a2e','#333344'],
+    specs:[['Socket','LGA1700'],['Chipset','Intel Z790'],['RAM Max','DDR5 192 GB'],['PCIe','5.0 x16'],['Red','Wi-Fi 6E + 2.5G LAN']],
+    shapeType:'motherboard', shelfPos:{x:-5,y:1.0,z:-3} },
+  { id:6, name:'Corsair RM1000x 80+ Gold', category:'PSU', emoji:'🔌', price:1450, stock:6,
+    desc:'Fuente modular 1000W certificación 80+ Gold. Ventilador semi-pasivo, cables trenzados premium.',
+    colors:['#111111','#222222','#ffcc00'],
+    specs:[['Potencia','1 000 W'],['Certificación','80+ Gold'],['Modular','Full-modular'],['Ventilador','135 mm semi-pasivo'],['Garantía','10 años']],
+    shapeType:'psu', shelfPos:{x:0,y:1.0,z:-3} },
+  { id:7, name:'NZXT H510 Flow ATX', category:'Case', emoji:'🖥️', price:980, stock:5,
+    desc:'Gabinete mid-tower ATX. Panel de vidrio templado, flujo de aire optimizado, panel frontal perforado.',
+    colors:['#f5f5f5','#1a1a1a','#cc2222'],
+    specs:[['Formato','Mid-Tower ATX'],['Material','Acero + Vidrio templado'],['Expansión','3× 2.5" + 2× 3.5"'],['Ventilación','2× 120mm incluidos'],['USB frontal','USB-C + 2× USB-A']],
+    shapeType:'case', shelfPos:{x:5,y:1.0,z:-3} },
+  { id:8, name:'Noctua NH-D15 Chromax Black', category:'Cooler', emoji:'❄️', price:590, stock:8,
+    desc:'Cooler de aire dual torre, dos ventiladores NF-A15 de 140mm. Cobertura TDP 250W. Ultra silencioso.',
+    colors:['#1a1a1a','#2a2a2a','#888888'],
+    specs:[['Tipo','Dual Tower Air'],['Ventiladores','2× NF-A15 140mm'],['TDP','250 W'],['Ruido máx.','24.6 dB(A)'],['Compatibilidad','AM5 / LGA1851']],
+    shapeType:'cooler', shelfPos:{x:-9,y:1.0,z:0} },
+];
+
+// ═══ 2. ESTADO ═══
+const STATE = { mode:'walk', pointerLocked:false, keys:{}, yaw:0, pitch:0,
+  nearbyProduct:null, currentProduct:null, currentQty:1, selectedColor:null,
+  cart:[], cartOpen:false, panelOpen:false, wishlist:new Set(),
+  autoRot:true, wireframe:false, explode:false };
+
+// ═══ 3. ESCENA PRINCIPAL ═══
+let mainScene, mainCamera, mainRenderer, mainClock;
+let productMeshes = [], orbitAngle = 0;
+
+function initMainScene() {
+  const canvas = document.getElementById('main-canvas');
+  mainRenderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+  mainRenderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  mainRenderer.setSize(innerWidth, innerHeight);
+  mainRenderer.shadowMap.enabled = true;
+  mainRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  mainRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+  mainRenderer.toneMappingExposure = 0.85;
+  mainRenderer.outputEncoding = THREE.sRGBEncoding;
+  mainRenderer.setClearColor(0x050709);
+  mainScene = new THREE.Scene();
+  mainScene.fog = new THREE.FogExp2(0x050709, 0.028);
+  mainCamera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.05, 80);
+  mainCamera.position.set(0, 1.75, 8);
+  mainClock = new THREE.Clock();
+  buildEnvironment(); buildLights(); buildProductObjects();
+  window.addEventListener('resize', onResize);
+  canvas.addEventListener('click', onMainClick);
+  document.addEventListener('keydown', onKeyDown);
+  document.addEventListener('keyup', e => delete STATE.keys[e.code]);
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('pointerlockchange', onPointerLockChange);
+  canvas.addEventListener('click', () => { if(STATE.mode==='walk') canvas.requestPointerLock(); });
+  requestAnimationFrame(mainLoop);
+}
+
+function buildEnvironment() {
+  const floorMat = new THREE.MeshStandardMaterial({ color:0x080c10, roughness:0.95, metalness:0.05 });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(36,36), floorMat);
+  floor.rotation.x = -Math.PI/2; floor.receiveShadow = true;
+  mainScene.add(floor);
+  mainScene.add(new THREE.GridHelper(36, 36, 0x0d1520, 0x0a1018));
+  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(36,36), new THREE.MeshStandardMaterial({color:0x060a0e,roughness:1}));
+  ceil.rotation.x = Math.PI/2; ceil.position.y = 5.5; mainScene.add(ceil);
+  const wallMat = new THREE.MeshStandardMaterial({ color:0x080c12, roughness:0.9 });
+  [{pos:[0,2.75,-17],rot:[0,0,0],w:36,h:5.5},{pos:[0,2.75,17],rot:[0,Math.PI,0],w:36,h:5.5},
+   {pos:[-17,2.75,0],rot:[0,Math.PI/2,0],w:34,h:5.5},{pos:[17,2.75,0],rot:[0,-Math.PI/2,0],w:34,h:5.5}
+  ].forEach(({pos,rot,w,h}) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w,h), wallMat);
+    m.position.set(...pos); m.rotation.set(...rot); m.receiveShadow=true; mainScene.add(m);
+  });
+  const neonMat = new THREE.MeshBasicMaterial({color:0x00c8ff,transparent:true,opacity:0.15});
+  [-8,-4,0,4,8].forEach(x => {
+    const s = new THREE.Mesh(new THREE.PlaneGeometry(0.04,36), neonMat);
+    s.rotation.x = -Math.PI/2; s.position.set(x,0.002,0); mainScene.add(s);
+  });
+  buildShelfUnit(-6.5,0,-8,0); buildShelfUnit(0,0,-8,0); buildShelfUnit(6.5,0,-8,0);
+  buildShelfUnit(-10,0,0,Math.PI/2); buildShelfUnit(10,0,0,-Math.PI/2);
+  buildPodium(-5,0,-3); buildPodium(0,0,-3); buildPodium(5,0,-3);
+}
+
+function buildShelfUnit(x,y,z,rotY) {
+  const g = new THREE.Group();
+  const frameMat = new THREE.MeshStandardMaterial({color:0x111822,roughness:0.5,metalness:0.6});
+  const shelfMat = new THREE.MeshStandardMaterial({color:0x0e151f,roughness:0.7,metalness:0.3});
+  [-1.6,1.6].forEach(dx => { const p=new THREE.Mesh(new THREE.BoxGeometry(0.05,3.2,0.05),frameMat); p.position.set(dx,1.6,0); p.castShadow=true; g.add(p); });
+  [0,1.6,3.2].forEach(hy => { const b=new THREE.Mesh(new THREE.BoxGeometry(3.3,0.04,0.05),frameMat); b.position.set(0,hy,0.24); g.add(b); });
+  [0.45,1.3,2.15,3.0].forEach(hy => {
+    const s=new THREE.Mesh(new THREE.BoxGeometry(3.3,0.04,0.55),shelfMat); s.position.set(0,hy,0); s.receiveShadow=true; s.castShadow=true; g.add(s);
+    const l=new THREE.Mesh(new THREE.BoxGeometry(3.3,0.015,0.02),new THREE.MeshBasicMaterial({color:0x00c8ff,transparent:true,opacity:0.5})); l.position.set(0,hy+0.03,0.28); g.add(l);
+  });
+  g.position.set(x,y,z); g.rotation.y=rotY; mainScene.add(g);
+}
+
+function buildPodium(x,y,z) {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({color:0x0c1220,roughness:0.3,metalness:0.8});
+  const topMat = new THREE.MeshStandardMaterial({color:0x131c2e,roughness:0.15,metalness:0.9});
+  const base=new THREE.Mesh(new THREE.CylinderGeometry(0.75,0.85,0.08,6),mat); base.position.y=0.04; base.castShadow=true; g.add(base);
+  const col=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.16,0.84,6),mat); col.position.y=0.5; col.castShadow=true; g.add(col);
+  const top=new THREE.Mesh(new THREE.CylinderGeometry(0.58,0.58,0.06,32),topMat); top.position.y=0.95; top.castShadow=true; g.add(top);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(0.59,0.012,8,64),new THREE.MeshBasicMaterial({color:0x00c8ff,transparent:true,opacity:0.6}));
+  ring.rotation.x=Math.PI/2; ring.position.y=0.98; g.add(ring);
+  g.position.set(x,y,z); mainScene.add(g);
+}
+
+function buildLights() {
+  mainScene.add(new THREE.AmbientLight(0x0a1020,4));
+  [[-6,-8],[0,-8],[6,-8],[-5,-3],[0,-3],[5,-3],[-9,0],[9,0],[0,2]].forEach(([sx,sz]) => {
+    const s=new THREE.SpotLight(0x99ddff,3,16,Math.PI/7,0.45,1.5);
+    s.position.set(sx,5.3,sz); s.target.position.set(sx,0,sz); s.castShadow=true; s.shadow.mapSize.setScalar(512);
+    mainScene.add(s,s.target);
+    const b=new THREE.Mesh(new THREE.SphereGeometry(0.06,8,8),new THREE.MeshBasicMaterial({color:0x99ddff}));
+    b.position.set(sx,5.2,sz); mainScene.add(b);
+  });
+  [[0x0044ff,-15,2.5,-12],[0xff2200,15,2.5,-12],[0x00ffaa,0,2.5,14]].forEach(([c,lx,ly,lz]) => {
+    const pl=new THREE.PointLight(c,2,18); pl.position.set(lx,ly,lz); mainScene.add(pl);
+  });
+}
+
+function buildProductObjects() {
+  PRODUCTS.forEach(product => {
+    const group = buildProductMesh(product);
+    group.position.set(product.shelfPos.x, product.shelfPos.y, product.shelfPos.z);
+    group.userData.isProduct=true; group.userData.productId=product.id;
+    mainScene.add(group);
+    productMeshes.push({group, product, baseY:product.shelfPos.y});
+  });
+}
+
+function buildProductMesh(product) {
+  const g = new THREE.Group();
+  const col = new THREE.Color(product.colors[0]);
+  const baseMat = () => new THREE.MeshStandardMaterial({color:col,roughness:0.25,metalness:0.75,emissive:col,emissiveIntensity:0.04});
+  const darkMat = new THREE.MeshStandardMaterial({color:0x0a0a0a,roughness:0.6,metalness:0.4});
+  const accentMat = new THREE.MeshStandardMaterial({color:0x00c8ff,roughness:0.1,metalness:1,emissive:0x00c8ff,emissiveIntensity:0.3});
+
+  switch(product.shapeType) {
+    case 'gpu': {
+      g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.55,0.22,0.12),baseMat())));
+      const cooler=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.2,0.05),darkMat); cooler.position.set(0,0.05,-0.085); g.add(cooler);
+      [-0.14,0,0.14].forEach(dx => {
+        const fan=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,0.015,16),darkMat);
+        fan.rotation.z=Math.PI/2; fan.position.set(dx,0.05,-0.1); fan.userData.isFan=true; g.add(fan);
+      });
+      const rgb=new THREE.Mesh(new THREE.BoxGeometry(0.55,0.01,0.005),accentMat); rgb.position.set(0,0.12,-0.06); g.add(rgb);
+      const conn=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.04,0.04),darkMat); conn.position.set(0.22,-0.09,-0.04); g.add(conn);
+      break;
+    }
+    case 'cpu': {
+      g.add(new THREE.Mesh(new THREE.BoxGeometry(0.2,0.015,0.2),baseMat()));
+      const heat=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.005,0.16),new THREE.MeshStandardMaterial({color:0xaaaaaa,metalness:1,roughness:0.1})); heat.position.y=0.01; g.add(heat);
+      for(let i=-3;i<=3;i++) for(let j=-3;j<=3;j++) { const pin=new THREE.Mesh(new THREE.CylinderGeometry(0.003,0.003,0.018,4),darkMat); pin.position.set(i*0.024,-0.016,j*0.024); g.add(pin); }
+      const stripe=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.001,0.004),accentMat); stripe.position.set(0,0.014,0.09); g.add(stripe);
+      break;
+    }
+    case 'ram': {
+      g.add(new THREE.Mesh(new THREE.BoxGeometry(0.07,0.3,0.01),baseMat()));
+      for(let i=-3;i<=3;i++) { const chip=new THREE.Mesh(new THREE.BoxGeometry(0.015,0.012,0.003),darkMat); chip.position.set(0,i*0.035,0.007); g.add(chip); }
+      const hs=new THREE.Mesh(new THREE.BoxGeometry(0.075,0.305,0.008),new THREE.MeshStandardMaterial({color:0x181818,roughness:0.2,metalness:0.9})); hs.position.set(0,0,-0.009); g.add(hs);
+      const led=new THREE.Mesh(new THREE.BoxGeometry(0.07,0.01,0.005),accentMat); led.position.set(0,0.155,0); g.add(led);
+      break;
+    }
+    case 'ssd': {
+      g.add(new THREE.Mesh(new THREE.BoxGeometry(0.22,0.008,0.08),baseMat()));
+      const ctrl=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.004,0.04),darkMat); ctrl.position.set(-0.05,0.006,0); g.add(ctrl);
+      [0.04,0.09].forEach(px => { const c=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.003,0.06),darkMat); c.position.set(px,0.0055,0); g.add(c); });
+      const conn=new THREE.Mesh(new THREE.BoxGeometry(0.022,0.005,0.004),new THREE.MeshStandardMaterial({color:0xdddddd,metalness:0.9})); conn.position.set(-0.1,0,0); g.add(conn);
+      break;
+    }
+    case 'motherboard': {
+      g.add(new THREE.Mesh(new THREE.BoxGeometry(0.5,0.008,0.5),new THREE.MeshStandardMaterial({color:0x0a0f0a,roughness:0.8})));
+      const socket=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.003,0.12),darkMat); socket.position.set(-0.1,0.005,-0.08); g.add(socket);
+      [0.04,0.08].forEach(pz => { const sl=new THREE.Mesh(new THREE.BoxGeometry(0.014,0.01,0.16),darkMat); sl.position.set(0.08,0.005,pz-0.12); g.add(sl); });
+      [-0.02,0.1].forEach(pz => { const pc=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.007,0.01),darkMat); pc.position.set(-0.08,0.005,pz); g.add(pc); });
+      const led=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.002,0.006),accentMat); led.position.set(0,0.006,0.248); g.add(led);
+      break;
+    }
+    case 'psu': {
+      g.add(new THREE.Mesh(new THREE.BoxGeometry(0.22,0.1,0.28),baseMat()));
+      const fan=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.01,16),darkMat); fan.position.set(0,0.055,0.04); fan.userData.isFan=true; g.add(fan);
+      [0,0.02,-0.02].forEach(dx => { const cable=new THREE.Mesh(new THREE.CylinderGeometry(0.004,0.004,0.07,6),darkMat); cable.position.set(dx,0,-0.175); cable.rotation.x=Math.PI/2; g.add(cable); });
+      const sticker=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.0015,0.06),new THREE.MeshStandardMaterial({color:0xeeeeee,roughness:0.5})); sticker.position.set(0,0.051,-0.04); g.add(sticker);
+      break;
+    }
+    case 'case': {
+      g.add(new THREE.Mesh(new THREE.BoxGeometry(0.2,0.45,0.42),baseMat()));
+      const glass=new THREE.Mesh(new THREE.BoxGeometry(0.002,0.42,0.38),new THREE.MeshStandardMaterial({color:0x88aacc,transparent:true,opacity:0.18,roughness:0,metalness:0})); glass.position.set(0.101,0.005,0); g.add(glass);
+      const front=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.45,0.005),darkMat); front.position.set(0,0,0.213); g.add(front);
+      const fLed=new THREE.Mesh(new THREE.BoxGeometry(0.003,0.35,0.007),accentMat); fLed.position.set(-0.098,0,0.212); g.add(fLed);
+      break;
+    }
+    case 'cooler': {
+      [-0.06,0.06].forEach(dx => { for(let i=0;i<6;i++) { const fin=new THREE.Mesh(new THREE.BoxGeometry(0.003,0.18,0.14),baseMat()); fin.position.set(dx+(i-2.5)*0.012,0.06,0); g.add(fin); } });
+      for(let i=0;i<4;i++) { const pipe=new THREE.Mesh(new THREE.CylinderGeometry(0.005,0.005,0.22,6),new THREE.MeshStandardMaterial({color:0xdd9900,metalness:1,roughness:0.1})); pipe.position.set((i-1.5)*0.025,0.09,0); g.add(pipe); }
+      const fan=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.14,0.014),darkMat); fan.position.set(0,0.06,0.08); fan.userData.isFan=true; g.add(fan);
+      break;
+    }
+    default: g.add(new THREE.Mesh(new THREE.BoxGeometry(0.2,0.2,0.2),baseMat()));
+  }
+  g.traverse(c => { if(c.isMesh) c.castShadow=true; });
+  return g;
+}
+
+// ═══ LOOP ═══
+const raycaster = new THREE.Raycaster();
+
+function mainLoop() {
+  requestAnimationFrame(mainLoop);
+  const dt = mainClock.getDelta();
+  const t  = mainClock.getElapsedTime();
+
+  if(STATE.mode==='walk' && STATE.pointerLocked) {
+    const speed=4.5*dt, dir=new THREE.Vector3();
+    if(STATE.keys['KeyW']||STATE.keys['ArrowUp'])    dir.z-=1;
+    if(STATE.keys['KeyS']||STATE.keys['ArrowDown'])  dir.z+=1;
+    if(STATE.keys['KeyA']||STATE.keys['ArrowLeft'])  dir.x-=1;
+    if(STATE.keys['KeyD']||STATE.keys['ArrowRight']) dir.x+=1;
+    dir.normalize().multiplyScalar(speed).applyEuler(new THREE.Euler(0,STATE.yaw,0));
+    mainCamera.position.add(dir);
+    mainCamera.position.x=Math.max(-14,Math.min(14,mainCamera.position.x));
+    mainCamera.position.z=Math.max(-14,Math.min(14,mainCamera.position.z));
+    mainCamera.position.y=1.75;
+    mainCamera.rotation.order='YXZ';
+    mainCamera.rotation.y=STATE.yaw;
+    mainCamera.rotation.x=STATE.pitch;
+  }
+  if(STATE.mode==='orbit') {
+    orbitAngle+=dt*0.12;
+    mainCamera.position.set(Math.sin(orbitAngle)*10, 3+Math.sin(orbitAngle*0.5)*0.8, Math.cos(orbitAngle)*10);
+    mainCamera.lookAt(0,1.2,-3);
+  }
+
+  productMeshes.forEach(({group,baseY},i) => {
+    group.position.y=baseY+Math.sin(t*0.9+i*1.4)*0.035;
+    group.rotation.y+=0.003;
+    group.traverse(c => { if(c.userData.isFan) c.rotation.y+=0.15; });
+  });
+
+  if(STATE.mode==='walk') {
+    raycaster.setFromCamera(new THREE.Vector2(0,0), mainCamera);
+    const hits=raycaster.intersectObjects(productMeshes.map(p=>p.group),true);
+    if(hits.length>0 && hits[0].distance<5) {
+      let gg=hits[0].object;
+      while(gg.parent && !gg.userData.isProduct) gg=gg.parent;
+      const prod=productMeshes.find(p=>p.group===gg);
+      STATE.nearbyProduct=prod?prod.product:null;
+      applyHighlight(gg);
+      document.getElementById('interact-tip').classList.add('show');
+    } else {
+      STATE.nearbyProduct=null; clearHighlight();
+      document.getElementById('interact-tip').classList.remove('show');
+    }
+  }
+  mainRenderer.render(mainScene, mainCamera);
+}
+
+let _hl=null;
+function applyHighlight(g) {
+  if(_hl===g) return; clearHighlight(); _hl=g;
+  g.traverse(c => { if(c.isMesh&&c.material) { c._pe=c.material.emissiveIntensity; c.material.emissiveIntensity=0.35; } });
+}
+function clearHighlight() {
+  if(!_hl) return;
+  _hl.traverse(c => { if(c.isMesh&&c.material&&c._pe!==undefined) c.material.emissiveIntensity=c._pe; });
+  _hl=null;
+}
+
+// ═══ 4. MINI-ESCENA PANEL ═══
+let pScene,pCamera,pRenderer,pMesh,pAnimId;
+let pDrag=false,pLastX=0,pLastY=0,pRotX=0.3,pRotY=0.6;
+
+function initPanelRenderer() {
+  const canvas=document.getElementById('product-canvas');
+  pRenderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+  const w=canvas.offsetWidth, h=canvas.offsetHeight;
+  pRenderer.setSize(w,h); pRenderer.setPixelRatio(devicePixelRatio);
+  pRenderer.outputEncoding=THREE.sRGBEncoding; pRenderer.toneMapping=THREE.ACESFilmicToneMapping;
+  pRenderer.setClearColor(0x000000,0);
+  pScene=new THREE.Scene();
+  pCamera=new THREE.PerspectiveCamera(45,w/h,0.01,50);
+  pCamera.position.set(0,0.1,1.2); pCamera.lookAt(0,0,0);
+  pScene.add(new THREE.AmbientLight(0xffffff,1));
+  const dl1=new THREE.DirectionalLight(0x99ddff,2.5); dl1.position.set(2,3,2); pScene.add(dl1);
+  const dl2=new THREE.DirectionalLight(0x0044ff,1); dl2.position.set(-2,0,-2); pScene.add(dl2);
+  const dl3=new THREE.DirectionalLight(0xff8800,0.5); dl3.position.set(0,-2,1); pScene.add(dl3);
+  canvas.addEventListener('mousedown',e=>{pDrag=true;pLastX=e.clientX;pLastY=e.clientY;});
+  window.addEventListener('mousemove',e=>{if(!pDrag)return;pRotY+=(e.clientX-pLastX)*0.012;pRotX+=(e.clientY-pLastY)*0.008;pRotX=Math.max(-1,Math.min(1,pRotX));pLastX=e.clientX;pLastY=e.clientY;});
+  window.addEventListener('mouseup',()=>pDrag=false);
+  animPanel();
+}
+
+function animPanel() {
+  pAnimId=requestAnimationFrame(animPanel);
+  if(!pMesh){pRenderer.render(pScene,pCamera);return;}
+  if(STATE.autoRot&&!pDrag) pRotY+=0.008;
+  pMesh.rotation.y=pRotY; pMesh.rotation.x=pRotX;
+  pMesh.traverse(c=>{if(c.userData.isFan)c.rotation.y+=0.18;});
+  pRenderer.render(pScene,pCamera);
+}
+
+function loadProductInPanel(product) {
+  if(pMesh) pScene.remove(pMesh);
+  pMesh=buildProductMesh(product); pMesh.scale.setScalar(2.8);
+  const box=new THREE.Box3().setFromObject(pMesh);
+  pMesh.position.sub(box.getCenter(new THREE.Vector3()));
+  pScene.add(pMesh); pRotX=0.3; pRotY=0.6;
+  updateWireframe();
+}
+
+// ═══ 5. CONTROLES ═══
+function onKeyDown(e) {
+  STATE.keys[e.code]=true;
+  if(e.code==='KeyF'&&STATE.nearbyProduct) openProductPanel(STATE.nearbyProduct);
+  if(e.code==='Escape'){document.exitPointerLock();closeProductPanel();if(STATE.cartOpen)toggleCart();}
+}
+function onMouseMove(e) {
+  if(!STATE.pointerLocked||STATE.mode!=='walk') return;
+  STATE.yaw-=e.movementX*0.0018; STATE.pitch-=e.movementY*0.0018;
+  STATE.pitch=Math.max(-Math.PI/2.5,Math.min(Math.PI/2.5,STATE.pitch));
+}
+function onPointerLockChange() {
+  STATE.pointerLocked=document.pointerLockElement===document.getElementById('main-canvas');
+  document.getElementById('crosshair').classList.toggle('show',STATE.pointerLocked);
+}
+function onMainClick() { if(STATE.nearbyProduct&&STATE.mode==='walk') openProductPanel(STATE.nearbyProduct); }
+function onResize() { mainCamera.aspect=innerWidth/innerHeight; mainCamera.updateProjectionMatrix(); mainRenderer.setSize(innerWidth,innerHeight); }
+
+// ═══ 6. UI — INTRO / LOADING ═══
+function enterStore() {
+  document.getElementById('intro-screen').classList.add('gone');
+  document.getElementById('loading-screen').classList.add('show');
+  simulateLoading(() => {
+    document.getElementById('loading-screen').classList.add('gone');
+    document.getElementById('crosshair').classList.add('show');
+    initMainScene(); initPanelRenderer();
+  });
+}
+function simulateLoading(cb) {
+  const bar=document.getElementById('loader-bar'), txt=document.getElementById('loader-text');
+  const steps=[[15,'Cargando geometrías 3D...'],[35,'Construyendo la tienda...'],[55,'Aplicando texturas y luces...'],[75,'Cargando catálogo de productos...'],[90,'Inicializando física y controles...'],[100,'Listo para explorar']];
+  let i=0;
+  const go=()=>{if(i>=steps.length){setTimeout(cb,300);return;}const[p,t]=steps[i++];bar.style.width=p+'%';txt.textContent=t;setTimeout(go,300+Math.random()*200);};
+  go();
+}
+
+// ═══ 7. MODO ═══
+function setMode(mode,btn) {
+  STATE.mode=mode;
+  document.querySelectorAll('.nav-pill').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(mode!=='walk') document.exitPointerLock();
+  document.getElementById('controls-legend').style.opacity=mode==='walk'?'0.7':'0.2';
+}
+
+// ═══ 8. PANEL PRODUCTO ═══
+function openProductPanel(product) {
+  STATE.currentProduct=product; STATE.currentQty=1; STATE.selectedColor=product.colors[0];
+  document.getElementById('pd-category').textContent=product.category;
+  document.getElementById('pd-name').textContent=product.name;
+  document.getElementById('pd-price').textContent=`Bs. ${product.price.toLocaleString('es-BO')}`;
+  document.getElementById('pd-desc').textContent=product.desc;
+  document.getElementById('qty-display').textContent=1;
+  const stockEl=document.getElementById('pd-stock');
+  const label=stockEl.querySelector('.stock-label');
+  stockEl.className='pd-stock';
+  if(product.stock===0){ stockEl.classList.add('stock-out'); label.textContent='Sin stock'; document.getElementById('btn-add').disabled=true; }
+  else if(product.stock<=4){ stockEl.classList.add('stock-low'); label.textContent=`Últimas ${product.stock} unidades`; document.getElementById('btn-add').disabled=false; }
+  else { stockEl.classList.add('stock-ok'); label.textContent=`En stock (${product.stock})`; document.getElementById('btn-add').disabled=false; }
+  const specsEl=document.getElementById('pd-specs'); specsEl.innerHTML='';
+  product.specs.forEach(([k,v])=>{ const ke=document.createElement('div'); ke.className='spec-key'; ke.textContent=k; const ve=document.createElement('div'); ve.className='spec-val'; ve.textContent=v; specsEl.append(ke,ve); });
+  const sw=document.getElementById('pd-swatches'); sw.innerHTML='';
+  product.colors.forEach((c,i)=>{ const s=document.createElement('div'); s.className='swatch'+(i===0?' selected':''); s.style.background=c; s.onclick=()=>{ document.querySelectorAll('.swatch').forEach(x=>x.classList.remove('selected')); s.classList.add('selected'); STATE.selectedColor=c; updatePanelMeshColor(c); }; sw.appendChild(s); });
+  document.querySelector('.btn-wish').classList.toggle('wished',STATE.wishlist.has(product.id));
+  loadProductInPanel(product);
+  STATE.panelOpen=true; document.getElementById('product-panel').classList.add('open');
+}
+function closeProductPanel() { STATE.panelOpen=false; document.getElementById('product-panel').classList.remove('open'); STATE.currentProduct=null; }
+function updatePanelMeshColor(hex) {
+  if(!pMesh) return; const c=new THREE.Color(hex);
+  pMesh.traverse(m=>{ if(m.isMesh&&m.material&&m.material.color&&!m.userData.isFan){ m.material.color.set(c); if(m.material.emissive) m.material.emissive.set(c); } });
+}
+function changeQty(delta) { const max=STATE.currentProduct?STATE.currentProduct.stock:0; STATE.currentQty=Math.max(1,Math.min(max,STATE.currentQty+delta)); document.getElementById('qty-display').textContent=STATE.currentQty; }
+function toggleAutoRot() { STATE.autoRot=!STATE.autoRot; document.getElementById('btn-autorot').classList.toggle('active-btn',STATE.autoRot); }
+function toggleWireframe() { STATE.wireframe=!STATE.wireframe; document.getElementById('btn-wireframe').classList.toggle('active-btn',STATE.wireframe); updateWireframe(); }
+function updateWireframe() { if(!pMesh) return; pMesh.traverse(m=>{ if(m.isMesh&&m.material) m.material.wireframe=STATE.wireframe; }); }
+function toggleExplode() {
+  STATE.explode=!STATE.explode; document.getElementById('btn-explode').classList.toggle('active-btn',STATE.explode);
+  if(!pMesh) return;
+  pMesh.traverse(m=>{ if(m.isMesh){ const tgt=STATE.explode?m.position.clone().multiplyScalar(1.6):m.position.clone().divideScalar(1.6); m.position.lerp(tgt,1); } });
+}
+function toggleWish() { if(!STATE.currentProduct) return; const id=STATE.currentProduct.id; if(STATE.wishlist.has(id)) STATE.wishlist.delete(id); else STATE.wishlist.add(id); document.querySelector('.btn-wish').classList.toggle('wished',STATE.wishlist.has(id)); }
+
+// ═══ 9. CARRITO ═══
+function addToCart() {
+  if(!STATE.currentProduct||STATE.currentProduct.stock===0) return;
+  STATE.cart.push({...STATE.currentProduct,cartId:Date.now()+Math.random(),selectedColor:STATE.selectedColor,qty:STATE.currentQty});
+  renderCart(); showToast(`✓ ${STATE.currentProduct.name} agregado`); closeProductPanel();
+  const badge=document.getElementById('cart-badge'); badge.classList.add('pop'); setTimeout(()=>badge.classList.remove('pop'),300);
+}
+function renderCart() {
+  const count=STATE.cart.length;
+  document.getElementById('cart-badge').textContent=count;
+  document.getElementById('cart-item-count').textContent=`(${count} ${count===1?'item':'items'})`;
+  const total=STATE.cart.reduce((s,i)=>s+i.price*i.qty,0);
+  document.getElementById('cart-subtotal-val').textContent=`Bs. ${total.toLocaleString('es-BO')}`;
+  document.getElementById('cart-total-val').textContent=`Bs. ${total.toLocaleString('es-BO')}`;
+  const list=document.getElementById('cart-items-list');
+  if(!STATE.cart.length){ list.innerHTML=`<div class="cart-empty"><svg width="40" height="40" viewBox="0 0 40 40" fill="none"><path d="M5 5h5l6 18a5 5 0 0 0 4.7 3.3h17a5 5 0 0 0 4.7-3.3L46 12H10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="18" cy="35" r="2" fill="currentColor"/><circle cx="34" cy="35" r="2" fill="currentColor"/></svg><span>Tu carrito está vacío</span></div>`; return; }
+  list.innerHTML=STATE.cart.map(item=>`<div class="cart-card"><div class="cart-card-icon">${item.emoji}</div><div class="cart-card-info"><div class="cart-card-name">${item.name}</div><div class="cart-card-meta">${item.category} · x${item.qty}</div><div class="cart-card-bottom"><div class="cart-card-price">Bs. ${(item.price*item.qty).toLocaleString('es-BO')}</div><button class="cart-card-remove" onclick="removeFromCart('${item.cartId}')">✕</button></div></div></div>`).join('');
+}
+function removeFromCart(id) { STATE.cart=STATE.cart.filter(i=>String(i.cartId)!==String(id)); renderCart(); }
+function toggleCart() { STATE.cartOpen=!STATE.cartOpen; document.getElementById('cart-panel').classList.toggle('open',STATE.cartOpen); document.getElementById('cart-overlay').classList.toggle('show',STATE.cartOpen); if(STATE.cartOpen) renderCart(); }
+
+// ═══ 10. TOAST ═══
+let toastTimer;
+function showToast(msg) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2800); }
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
+</body>
+</html>
